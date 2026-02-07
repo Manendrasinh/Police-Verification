@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gujarat Police Bharti - Verification System (Firebase)</title>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 5px;
+        }
+
+        .header .gujarati {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 1000;
+        }
+
+        .connection-status.connected {
+            background: #28a745;
+            color: white;
+        }
+
+        .connection-status.disconnected {
+            background: #dc3545;
+            color: white;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            font-size: 2.5em;
+            margin-bottom: 5px;
+        }
+
+        .stat-card p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            padding: 12px 20px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .tab-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .scanner-container {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        #reader {
+            border-radius: 10px;
+            overflow: hidden;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .scan-result {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .scan-result.success {
+            background: #d4edda;
+            border: 2px solid #28a745;
+        }
+
+        .scan-result.error {
+            background: #f8d7da;
+            border: 2px solid #dc3545;
+        }
+
+        .scan-result.not-found {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+        }
+
+        .scan-result h3 {
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .student-details {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 15px;
+            text-align: left;
+        }
+
+        .student-details p {
+            margin: 10px 0;
+            font-size: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+        }
+
+        .student-details strong {
+            color: #667eea;
+            min-width: 150px;
+        }
+
+        .student-details span {
+            text-align: right;
+            flex: 1;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 14px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6c757d 0%, #545b62 100%);
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .search-box input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        label .gujarati {
+            color: #667eea;
+            margin-left: 5px;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .student-list {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .student-item {
+            background: #f8f9fa;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .student-item.verified {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+
+        .student-info h4 {
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 18px;
+        }
+
+        .student-info p {
+            color: #666;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+
+        .student-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .student-actions button {
+            padding: 8px 15px;
+            font-size: 14px;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .import-section {
+            background: #e7f3ff;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 2px dashed #667eea;
+        }
+
+        .import-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        textarea.csv-input {
+            font-family: monospace;
+            min-height: 150px;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.5em;
+            }
+
+            .header .gujarati {
+                font-size: 1.2em;
+            }
+
+            .stats {
+                grid-template-columns: 1fr;
+            }
+
+            .connection-status {
+                top: 10px;
+                right: 10px;
+                font-size: 12px;
+                padding: 8px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="connection-status" id="connectionStatus">
+            <span id="statusText">⚪ Connecting...</span>
+        </div>
+
+        <div class="header">
+            <h1>🎓 Gujarat Police Bharti</h1>
+            <p class="gujarati">ગુજરાત પોલીસ ભરતી - વિદ્યાર્થી ચકાસણી સિસ્ટમ</p>
+            <p>Student Verification System (Firebase)</p>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="stats">
+            <div class="stat-card">
+                <h3 id="totalStudents">0</h3>
+                <p>કુલ નોંધાયેલ / Total Registered</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="verifiedStudents">0</h3>
+                <p>આજે ચકાસાયેલ / Verified Today</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="pendingStudents">0</h3>
+                <p>બાકી / Pending</p>
+            </div>
+        </div>
+        
+        <!-- Google Sheets Sync Status -->
+        <div class="card" style="padding: 15px; margin-bottom: 20px; background: #e7f3ff;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <div>
+                    <strong style="color: #667eea;">📊 Google Sheets Sync:</strong>
+                    <span id="syncStatus" style="margin-left: 10px;">Ready</span>
+                    <small id="lastSyncTime" style="display: block; color: #666; margin-top: 5px;">Never synced</small>
+                </div>
+                <button class="btn" onclick="syncFromGoogleSheets()" id="syncButton">
+                    🔄 Pull Latest from Google Sheets
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Card -->
+        <div class="card">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('scanner')">📷 Scan</button>
+                <button class="tab-btn" onclick="switchTab('manual')">🔍 Search</button>
+                <button class="tab-btn" onclick="switchTab('register')">➕ Register</button>
+                <button class="tab-btn" onclick="switchTab('import')">📥 Import</button>
+                <button class="tab-btn" onclick="switchTab('list')">📋 All Students</button>
+            </div>
+
+            <!-- Scanner Tab -->
+            <div id="scannerTab">
+                <div class="scanner-container">
+                    <h3 style="margin-bottom: 15px; text-align: center;">કોલ લેટર સ્કેન કરો / Scan Call Letter</h3>
+                    <p style="text-align: center; color: #666; margin-bottom: 15px;">
+                        Position the barcode from call letter in camera view
+                    </p>
+                    <div id="reader"></div>
+                    <div style="text-align: center; margin-top: 15px;">
+                        <button class="btn btn-secondary" id="toggleCameraBtn" onclick="toggleCamera()">Stop Camera</button>
+                    </div>
+                </div>
+
+                <div id="scanResult"></div>
+            </div>
+
+            <!-- Manual Search Tab -->
+            <div id="manualTab" class="hidden">
+                <h3 style="margin-bottom: 15px;">વિદ્યાર્થી શોધો / Search Student</h3>
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="કન્ફર્મેશન નંબર, નામ, અથવા મોબાઇલ / Confirmation No, Name, or Phone...">
+                    <button class="btn" onclick="searchStudent()">Search</button>
+                </div>
+                <div id="searchResults"></div>
+            </div>
+
+            <!-- Quick Registration Tab -->
+            <div id="registerTab" class="hidden">
+                <h3 style="margin-bottom: 15px;">ઝડપી નોંધણી / Quick On-Spot Registration</h3>
+                <div id="registerAlert" class="alert alert-success hidden"></div>
+                <form id="quickRegForm">
+                    <div class="form-group">
+                        <label>કન્ફર્મેશન નંબર <span class="gujarati">/ Confirmation Number</span> *</label>
+                        <input type="text" id="regConfirmation" required>
+                    </div>
+                    <div class="form-group">
+                        <label>નામ <span class="gujarati">/ Name</span> *</label>
+                        <input type="text" id="regName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>અટક <span class="gujarati">/ Surname</span> *</label>
+                        <input type="text" id="regSurname" required>
+                    </div>
+                    <div class="form-group">
+                        <label>પિતાનું નામ <span class="gujarati">/ Father's Name</span> *</label>
+                        <input type="text" id="regFatherName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>ગામ <span class="gujarati">/ Village/City</span> *</label>
+                        <input type="text" id="regVillage" required>
+                    </div>
+                    <div class="form-group">
+                        <label>પિન કોડ <span class="gujarati">/ Pin Code</span> *</label>
+                        <input type="text" id="regPincode" required pattern="[0-9]{6}">
+                    </div>
+                    <div class="form-group">
+                        <label>મોબાઇલ નંબર <span class="gujarati">/ Mobile Number</span> *</label>
+                        <input type="tel" id="regMobile" required pattern="[0-9]{10}">
+                    </div>
+                    <div class="form-group">
+                        <label>આધાર કાર્ડ <span class="gujarati">/ Aadhaar Card</span></label>
+                        <input type="text" id="regAadhaar" pattern="[0-9]{12}">
+                    </div>
+                    <div class="form-group">
+                        <label>પરીક્ષાની તારીખ <span class="gujarati">/ Exam Date</span> *</label>
+                        <input type="date" id="regExamDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>વિશેષ સૂચન <span class="gujarati">/ Special Note</span></label>
+                        <textarea id="regSpecial" rows="3"></textarea>
+                    </div>
+                    <button type="submit" class="btn">Register Student</button>
+                </form>
+            </div>
+
+            <!-- Import Tab -->
+            <div id="importTab" class="hidden">
+                <div class="import-section">
+                    <h3>📥 Import from Google Sheets</h3>
+                    
+                    <div class="alert alert-info">
+                        <strong>How to import:</strong><br>
+                        1. Open your Google Form responses in Google Sheets<br>
+                        2. Select and copy ALL data (including headers)<br>
+                        3. Paste in the box below<br>
+                        4. Click Import - data will sync to Firebase
+                    </div>
+
+                    <div class="form-group">
+                        <label>Or upload CSV file:</label>
+                        <input type="file" id="csvFile" accept=".csv" onchange="handleFileUpload(event)">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Paste CSV data here:</label>
+                        <textarea id="csvData" class="csv-input" placeholder="Paste your Google Sheets data here..."></textarea>
+                    </div>
+
+                    <button class="btn" onclick="importData()">📥 Import to Firebase</button>
+                </div>
+
+                <div id="importResult"></div>
+            </div>
+
+            <!-- All Students List Tab -->
+            <div id="listTab" class="hidden">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap;">
+                    <h3>બધા વિદ્યાર્થીઓ / All Students</h3>
+                    <button class="btn btn-secondary" onclick="exportData()">📥 Export to Spreadsheet</button>
+                </div>
+                <div class="student-list" id="studentListContainer">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading students...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========================================
+        // 🔧 CONFIGURATION - EDIT THESE VALUES
+        // ========================================
+        
+        const CONFIG = {
+            // Firebase Configuration
+            FIREBASE: {
+                apiKey: "AIzaSyDBjXKdo1ROU-ldRT3vQ8h_olz6GCiDLDY",
+                databaseURL: "https://gujarat-police-bharti-8f813-default-rtdb.asia-southeast1.firebasedatabase.app",
+                projectId: "gujarat-police-bharti-8f813"
+            },
+            
+            // Google Sheets Configuration
+            GOOGLE_SHEETS: {
+                SHEET_ID: "1PjQ3nKNoLO7Ee5vrEnpwG7o3MLJJyJiNq15k2rdXyPA", // From Google Sheets URL
+                AUTO_SYNC: true, // Auto-pull from Google Sheets every 2 minutes
+                SYNC_INTERVAL: 120 // Seconds (120 = 2 minutes)
+            }
+        };
+        
+        // ========================================
+        // END CONFIGURATION
+        // ========================================
+        
+        // Global Variables
+        let firebaseApp = null;
+        let database = null;
+        let studentsRef = null;
+        let html5QrcodeScanner = null;
+        let isScannerActive = false;
+        let students = {};
+        let googleSheetsSyncInterval = null;
+        let lastGoogleSheetsSync = null;
+
+        // Initialize Firebase
+        function initializeFirebase() {
+            try {
+                firebaseApp = firebase.initializeApp(CONFIG.FIREBASE);
+                database = firebase.database();
+                studentsRef = database.ref('students');
+
+                updateConnectionStatus(true);
+
+                // Listen to connection state
+                const connectedRef = database.ref('.info/connected');
+                connectedRef.on('value', (snap) => {
+                    updateConnectionStatus(snap.val() === true);
+                });
+
+                // Load students from Firebase
+                loadStudents();
+
+                // Initialize scanner
+                initializeScanner();
+                
+                // Start auto-sync from Google Sheets if enabled
+                if (CONFIG.GOOGLE_SHEETS.AUTO_SYNC && CONFIG.GOOGLE_SHEETS.SHEET_ID !== 'YOUR_GOOGLE_SHEET_ID_HERE') {
+                    startGoogleSheetsSync();
+                }
+
+            } catch (error) {
+                console.error('Firebase initialization error:', error);
+                updateConnectionStatus(false);
+                alert('Error connecting to Firebase. Please check configuration.');
+            }
+        }
+
+        function updateConnectionStatus(isConnected) {
+            const statusEl = document.getElementById('connectionStatus');
+            const statusText = document.getElementById('statusText');
+            
+            if (isConnected) {
+                statusEl.className = 'connection-status connected';
+                statusText.textContent = '🟢 Connected';
+            } else {
+                statusEl.className = 'connection-status disconnected';
+                statusText.textContent = '🔴 Disconnected';
+            }
+        }
+
+        // ========================================
+        // GOOGLE SHEETS SYNC FUNCTIONS
+        // ========================================
+
+        function startGoogleSheetsSync() {
+            // Initial sync
+            syncFromGoogleSheets();
+            
+            // Set up periodic sync
+            if (googleSheetsSyncInterval) clearInterval(googleSheetsSyncInterval);
+            
+            googleSheetsSyncInterval = setInterval(() => {
+                syncFromGoogleSheets();
+            }, CONFIG.GOOGLE_SHEETS.SYNC_INTERVAL * 1000);
+            
+            console.log('Auto-sync from Google Sheets started (every ' + CONFIG.GOOGLE_SHEETS.SYNC_INTERVAL + ' seconds)');
+        }
+
+        async function syncFromGoogleSheets() {
+            if (!CONFIG.GOOGLE_SHEETS.SHEET_ID || CONFIG.GOOGLE_SHEETS.SHEET_ID === 'YOUR_GOOGLE_SHEET_ID_HERE') {
+                console.log('Google Sheets ID not configured');
+                return;
+            }
+
+            const syncButton = document.getElementById('syncButton');
+            const syncStatus = document.getElementById('syncStatus');
+            
+            try {
+                syncButton.disabled = true;
+                syncStatus.textContent = '⏳ Syncing...';
+                syncStatus.style.color = '#ffc107';
+                
+                // Fetch from Google Sheets CSV export
+                const csvUrl = `https://docs.google.com/spreadsheets/d/${CONFIG.GOOGLE_SHEETS.SHEET_ID}/export?format=csv`;
+                
+                const response = await fetch(csvUrl);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch Google Sheets. Make sure it\'s shared as "Anyone with link can view"');
+                }
+                
+                const csvText = await response.text();
+                const rows = parseCSV(csvText);
+                
+                if (rows.length < 2) {
+                    throw new Error('No data found in Google Sheets');
+                }
+                
+                // Process data
+                const headers = rows[0];
+                let imported = 0;
+                let updated = 0;
+                const batch = {};
+                
+                for (let i = 1; i < rows.length; i++) {
+                    const row = rows[i];
+                    
+                    // Map columns (adjust indices based on your sheet structure)
+                    const confirmation = row[1]?.trim(); // Column B
+                    const name = row[3]?.trim(); // Column D
+                    
+                    if (!confirmation || !name) continue;
+                    
+                    const studentId = 'student_' + confirmation;
+                    
+                    // Check if student already exists in Firebase
+                    const existingStudent = students[studentId];
+                    
+                    batch[studentId] = {
+                        id: studentId,
+                        confirmation: confirmation,
+                        surname: row[2]?.trim() || '',
+                        name: name,
+                        fatherName: row[4]?.trim() || '',
+                        village: row[5]?.trim() || '',
+                        pincode: row[6]?.trim() || '',
+                        mobile: row[7]?.trim() || '',
+                        aadhaar: row[8]?.trim() || '',
+                        examDate: row[9]?.trim() || '',
+                        specialNote: row[11]?.trim() || '',
+                        registrationType: row[12]?.trim() || 'Form Registration',
+                        status: existingStudent?.verified ? 'Verified' : (row[13]?.trim() || 'Pending'),
+                        verified: existingStudent?.verified || false,
+                        verifiedAt: existingStudent?.verifiedAt || null,
+                        registeredAt: row[0] || new Date().toISOString()
+                    };
+                    
+                    if (existingStudent) {
+                        updated++;
+                    } else {
+                        imported++;
+                    }
+                }
+                
+                // Write to Firebase
+                await studentsRef.update(batch);
+                
+                lastGoogleSheetsSync = new Date();
+                syncStatus.textContent = `✅ Synced (${imported} new, ${updated} updated)`;
+                syncStatus.style.color = '#28a745';
+                document.getElementById('lastSyncTime').textContent = 'Last synced: ' + lastGoogleSheetsSync.toLocaleTimeString();
+                
+                console.log(`Google Sheets sync complete: ${imported} imported, ${updated} updated`);
+                
+            } catch (error) {
+                console.error('Google Sheets sync error:', error);
+                syncStatus.textContent = '❌ Sync failed';
+                syncStatus.style.color = '#dc3545';
+                
+                // Show error to user
+                if (error.message.includes('shared')) {
+                    alert('Cannot access Google Sheets. Please make sure:\n1. Sheet is shared as "Anyone with link can view"\n2. Sheet ID is correct in configuration');
+                }
+            } finally {
+                syncButton.disabled = false;
+            }
+        }
+
+        // Simple CSV parser
+        function parseCSV(csvText) {
+            const lines = csvText.split('\n');
+            const result = [];
+            
+            for (let line of lines) {
+                if (!line.trim()) continue;
+                
+                // Handle both comma and tab-separated values
+                const values = line.split('\t').length > 1 ? line.split('\t') : line.split(',');
+                result.push(values.map(v => v.replace(/^"|"$/g, '').trim()));
+            }
+            
+            return result;
+        }
+
+        function loadStudents() {
+            studentsRef.on('value', (snapshot) => {
+                students = snapshot.val() || {};
+                updateStats();
+                if (!document.getElementById('listTab').classList.contains('hidden')) {
+                    loadAllStudents();
+                }
+            });
+        }
+
+        function updateStats() {
+            const studentsArray = Object.values(students);
+            const today = new Date().toDateString();
+            const verifiedToday = studentsArray.filter(s => 
+                s.verified && s.verifiedAt && new Date(s.verifiedAt).toDateString() === today
+            ).length;
+
+            document.getElementById('totalStudents').textContent = studentsArray.length;
+            document.getElementById('verifiedStudents').textContent = verifiedToday;
+            document.getElementById('pendingStudents').textContent = studentsArray.filter(s => !s.verified).length;
+        }
+
+        // QR Scanner Functions
+        function initializeScanner() {
+            html5QrcodeScanner = new Html5Qrcode("reader");
+            startScanning();
+        }
+
+        function startScanning() {
+            if (isScannerActive) return;
+
+            html5QrcodeScanner.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                onScanSuccess,
+                onScanError
+            ).then(() => {
+                isScannerActive = true;
+                document.getElementById('toggleCameraBtn').textContent = 'Stop Camera';
+            }).catch(err => {
+                console.error('Camera error:', err);
+                showScanResult('error', 'Unable to access camera. Please allow camera permissions.');
+            });
+        }
+
+        function stopScanning() {
+            if (!isScannerActive) return;
+
+            html5QrcodeScanner.stop().then(() => {
+                isScannerActive = false;
+                document.getElementById('toggleCameraBtn').textContent = 'Start Camera';
+            }).catch(err => console.error('Camera stop error:', err));
+        }
+
+        function toggleCamera() {
+            isScannerActive ? stopScanning() : startScanning();
+        }
+
+        function onScanSuccess(decodedText) {
+            stopScanning();
+            const confirmation = decodedText.trim();
+            
+            const student = Object.values(students).find(s => 
+                s.confirmation && s.confirmation.toLowerCase() === confirmation.toLowerCase()
+            );
+
+            if (student) {
+                if (student.verified) {
+                    showScanResult('error', 'પહેલાથી ચકાસાયેલ / Already Verified!', student);
+                } else {
+                    showScanResult('success', 'વિદ્યાર્થી મળ્યો / Student Found!', student);
+                }
+            } else {
+                showScanResult('not-found', 'નોંધણી નથી / Registration Not Found', null, confirmation);
+            }
+        }
+
+        function onScanError(errorMessage) {
+            // Ignore scan errors
+        }
+
+        function showScanResult(type, message, student = null, confirmation = '') {
+            const resultDiv = document.getElementById('scanResult');
+            
+            let html = `<div class="scan-result ${type}">`;
+            html += `<h3>${message}</h3>`;
+            
+            if (student) {
+                html += `<div class="student-details">`;
+                html += `<p><strong>કન્ફર્મેશન / Confirmation:</strong> <span>${student.confirmation}</span></p>`;
+                html += `<p><strong>નામ / Name:</strong> <span>${student.name}</span></p>`;
+                if (student.surname) html += `<p><strong>અટક / Surname:</strong> <span>${student.surname}</span></p>`;
+                html += `<p><strong>પિતા / Father:</strong> <span>${student.fatherName}</span></p>`;
+                html += `<p><strong>મોબાઇલ / Mobile:</strong> <span>${student.mobile}</span></p>`;
+                html += `<p><strong>ગામ / Village:</strong> <span>${student.village}</span></p>`;
+                if (student.examDate) html += `<p><strong>પરીક્ષા / Exam:</strong> <span>${student.examDate}</span></p>`;
+                if (student.registrationType) html += `<p><strong>Type:</strong> <span>${student.registrationType}</span></p>`;
+                if (student.verifiedAt) {
+                    html += `<p><strong>Verified:</strong> <span>${new Date(student.verifiedAt).toLocaleString()}</span></p>`;
+                }
+                html += `</div>`;
+                
+                if (!student.verified) {
+                    html += `<button class="btn btn-success" onclick="verifyStudent('${student.id}')">✓ ચકાસો / Mark Verified</button>`;
+                }
+            } else if (type === 'not-found') {
+                html += `<p style="margin: 15px 0;">કન્ફર્મેશન નંબર / Confirmation: <strong>${confirmation}</strong></p>`;
+                html += `<p>આ વિદ્યાર્થી સિસ્ટમમાં નથી / Student not in system</p>`;
+                html += `<button class="btn" onclick="quickRegisterFromScan('${confirmation}')">હમણાં નોંધણી કરો / Register Now</button>`;
+            }
+            
+            html += `<button class="btn btn-secondary" onclick="clearScanResult()">ફરીથી સ્કેન / Scan Again</button>`;
+            html += `</div>`;
+            
+            resultDiv.innerHTML = html;
+        }
+
+        function clearScanResult() {
+            document.getElementById('scanResult').innerHTML = '';
+            startScanning();
+        }
+
+        function verifyStudent(studentId) {
+            const student = students[studentId];
+            if (student) {
+                const updates = {
+                    verified: true,
+                    verifiedAt: new Date().toISOString(),
+                    status: 'Verified'
+                };
+
+                studentsRef.child(studentId).update(updates).then(() => {
+                    showScanResult('success', 'સફળતાપૂર્વક ચકાસાયેલ / Verified Successfully!', {...student, ...updates});
+                }).catch(error => {
+                    alert('Error verifying student: ' + error.message);
+                });
+            }
+        }
+
+        function quickRegisterFromScan(confirmation) {
+            switchTab('register');
+            document.getElementById('regConfirmation').value = confirmation;
+            document.getElementById('regName').focus();
+        }
+
+        // Manual Search
+        function searchStudent() {
+            const query = document.getElementById('searchInput').value.trim().toLowerCase();
+            if (!query) return;
+
+            const results = Object.values(students).filter(s => 
+                (s.confirmation && s.confirmation.toLowerCase().includes(query)) ||
+                (s.name && s.name.toLowerCase().includes(query)) ||
+                (s.mobile && s.mobile.includes(query))
+            );
+
+            displaySearchResults(results);
+        }
+
+        function displaySearchResults(results) {
+            const container = document.getElementById('searchResults');
+            
+            if (results.length === 0) {
+                container.innerHTML = '<div class="alert alert-warning">કોઈ વિદ્યાર્થી મળ્યો નથી / No students found</div>';
+                return;
+            }
+
+            let html = '<div class="student-list">';
+            results.forEach(student => {
+                html += createStudentCard(student);
+            });
+            html += '</div>';
+            
+            container.innerHTML = html;
+        }
+
+        function createStudentCard(student) {
+            const verifiedClass = student.verified ? 'verified' : '';
+            const fullName = student.surname ? `${student.name} ${student.surname}` : student.name;
+            const registrationType = student.registrationType || 'Form Registration';
+            
+            return `
+                <div class="student-item ${verifiedClass}">
+                    <div class="student-info">
+                        <h4>${fullName} ${student.verified ? '✓' : ''}</h4>
+                        <p><strong>કન્ફર્મેશન / Confirmation:</strong> ${student.confirmation}</p>
+                        <p><strong>પિતા / Father:</strong> ${student.fatherName}</p>
+                        <p><strong>મોબાઇલ / Mobile:</strong> ${student.mobile}</p>
+                        <p><strong>ગામ / Village:</strong> ${student.village}${student.pincode ? ' - ' + student.pincode : ''}</p>
+                        ${student.examDate ? `<p><strong>પરીક્ષા / Exam:</strong> ${student.examDate}</p>` : ''}
+                        <p><strong>Type:</strong> <span style="background: ${registrationType === 'On-Spot Registration' ? '#ffc107' : '#667eea'}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${registrationType}</span></p>
+                        ${student.verifiedAt ? `<p><strong>Verified:</strong> ${new Date(student.verifiedAt).toLocaleString()}</p>` : ''}
+                    </div>
+                    <div class="student-actions">
+                        ${!student.verified ? `<button class="btn btn-success" onclick="verifyStudent('${student.id}')">Verify</button>` : ''}
+                        <button class="btn btn-danger" onclick="deleteStudent('${student.id}')">Delete</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Quick Registration
+        document.getElementById('quickRegForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const confirmation = document.getElementById('regConfirmation').value.trim();
+            
+            // Check if already exists
+            if (Object.values(students).some(s => s.confirmation === confirmation)) {
+                showAlert('registerAlert', 'આ કન્ફર્મેશન નંબર પહેલાથી નોંધાયેલ છે / This confirmation number already exists!', 'warning');
+                return;
+            }
+
+            const studentId = 'student_' + Date.now();
+            const newStudent = {
+                id: studentId,
+                confirmation: confirmation,
+                name: document.getElementById('regName').value.trim(),
+                surname: document.getElementById('regSurname').value.trim(),
+                fatherName: document.getElementById('regFatherName').value.trim(),
+                village: document.getElementById('regVillage').value.trim(),
+                pincode: document.getElementById('regPincode').value.trim(),
+                mobile: document.getElementById('regMobile').value.trim(),
+                aadhaar: document.getElementById('regAadhaar').value.trim(),
+                examDate: document.getElementById('regExamDate').value,
+                specialNote: document.getElementById('regSpecial').value.trim(),
+                verified: false,
+                status: 'Pending',
+                registrationType: 'On-Spot Registration',
+                registeredAt: new Date().toISOString()
+            };
+
+            studentsRef.child(studentId).set(newStudent).then(() => {
+                this.reset();
+                showAlert('registerAlert', 'સફળતાપૂર્વક નોંધાયેલ / Successfully registered!', 'success');
+            }).catch(error => {
+                alert('Error registering student: ' + error.message);
+            });
+        });
+
+        // Import Data
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('csvData').value = e.target.result;
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        function importData() {
+            const csvData = document.getElementById('csvData').value.trim();
+            if (!csvData) {
+                alert('Please paste CSV data or upload a file first.');
+                return;
+            }
+
+            const lines = csvData.split('\n');
+            const headers = lines[0].split('\t').length > 1 ? lines[0].split('\t') : lines[0].split(',');
+            
+            let imported = 0;
+            let skipped = 0;
+            const batch = {};
+
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+
+                const values = line.split('\t').length > 1 ? line.split('\t') : line.split(',');
+                
+                // Column mapping: Timestamp, Confirmation Number, Surname, Name, Father's Name, Village, Pin Code, Mobile Number, Aadhar Card, Exam Date
+                const confirmation = values[1]?.trim();
+                const name = values[3]?.trim();
+                
+                if (!confirmation || !name) continue;
+
+                // Check if already exists
+                if (Object.values(students).some(s => s.confirmation === confirmation)) {
+                    skipped++;
+                    continue;
+                }
+
+                const studentId = 'student_' + Date.now() + '_' + i;
+                batch[studentId] = {
+                    id: studentId,
+                    confirmation: confirmation,
+                    surname: values[2]?.trim() || '',
+                    name: name,
+                    fatherName: values[4]?.trim() || '',
+                    village: values[5]?.trim() || '',
+                    pincode: values[6]?.trim() || '',
+                    mobile: values[7]?.trim() || '',
+                    aadhaar: values[8]?.trim() || '',
+                    examDate: values[9]?.trim() || '',
+                    specialNote: values[11]?.trim() || '',
+                    verified: false,
+                    status: 'Pending',
+                    registrationType: 'Form Registration',
+                    registeredAt: values[0] || new Date().toISOString()
+                };
+
+                imported++;
+            }
+
+            if (imported === 0) {
+                alert('No valid data found to import');
+                return;
+            }
+
+            studentsRef.update(batch).then(() => {
+                const resultDiv = document.getElementById('importResult');
+                resultDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <strong>Import Complete!</strong><br>
+                        ✓ Imported: ${imported} students<br>
+                        ${skipped > 0 ? `⚠ Skipped: ${skipped} (already exist)` : ''}
+                    </div>
+                `;
+
+                document.getElementById('csvData').value = '';
+                document.getElementById('csvFile').value = '';
+            }).catch(error => {
+                alert('Error importing data: ' + error.message);
+            });
+        }
+
+        // Export Data
+        function exportData() {
+            const studentsArray = Object.values(students);
+            if (studentsArray.length === 0) {
+                alert('No data to export');
+                return;
+            }
+
+            // Create spreadsheet format
+            let csv = 'Timestamp,Confirmation Number,Surname,Name,Father Name,Village,Pin Code,Mobile,Aadhaar,Exam Date,Call Letter,Special Note,Registration Type,Status,Verified At\n';
+            studentsArray.forEach(s => {
+                csv += `"${s.registeredAt || ''}","${s.confirmation}","${s.surname || ''}","${s.name}","${s.fatherName}","${s.village}","${s.pincode}","${s.mobile}","${s.aadhaar || ''}","${s.examDate}","","${s.specialNote || ''}","${s.registrationType || 'Form Registration'}","${s.status || 'Pending'}","${s.verifiedAt || ''}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `students_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+        }
+
+        // Delete Student
+        function deleteStudent(studentId) {
+            if (confirm('શું તમે ખરેખર કાઢી નાખવા માંગો છો? / Are you sure you want to delete?')) {
+                studentsRef.child(studentId).remove().catch(error => {
+                    alert('Error deleting student: ' + error.message);
+                });
+            }
+        }
+
+        // Load All Students
+        function loadAllStudents() {
+            const container = document.getElementById('studentListContainer');
+            const studentsArray = Object.values(students);
+            
+            if (studentsArray.length === 0) {
+                container.innerHTML = '<div class="alert alert-info">હજુ કોઈ વિદ્યાર્થી નથી / No students yet</div>';
+                return;
+            }
+
+            let html = '';
+            studentsArray.forEach(student => {
+                html += createStudentCard(student);
+            });
+            
+            container.innerHTML = html;
+        }
+
+        // Tab Switching
+        function switchTab(tabName) {
+            document.getElementById('scannerTab').classList.add('hidden');
+            document.getElementById('manualTab').classList.add('hidden');
+            document.getElementById('registerTab').classList.add('hidden');
+            document.getElementById('importTab').classList.add('hidden');
+            document.getElementById('listTab').classList.add('hidden');
+
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+
+            const tabs = {
+                'scanner': 'scannerTab',
+                'manual': 'manualTab',
+                'register': 'registerTab',
+                'import': 'importTab',
+                'list': 'listTab'
+            };
+
+            document.getElementById(tabs[tabName]).classList.remove('hidden');
+            event.target.classList.add('active');
+
+            if (tabName === 'list') {
+                loadAllStudents();
+            } else if (tabName === 'scanner' && !isScannerActive) {
+                startScanning();
+            } else if (tabName !== 'scanner' && isScannerActive) {
+                stopScanning();
+            }
+        }
+
+        // Helper Functions
+        function showAlert(elementId, message, type = 'success') {
+            const alert = document.getElementById(elementId);
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            alert.classList.remove('hidden');
+            setTimeout(() => alert.classList.add('hidden'), 4000);
+        }
+
+        // Search on Enter key
+        document.getElementById('searchInput')?.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') searchStudent();
+        });
+
+        // Initialize on load
+        window.addEventListener('load', initializeFirebase);
+
+        // Cleanup
+        window.addEventListener('beforeunload', function() {
+            if (isScannerActive && html5QrcodeScanner) {
+                html5QrcodeScanner.stop();
+            }
+        });
+    </script>
+</body>
+</html>
